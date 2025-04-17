@@ -2,7 +2,7 @@ import { Mat3 } from "./modules/matMath.mjs";
 import { Mat4 } from "./modules/matMath.mjs";
 import { Vec3 } from "./modules/matMath.mjs";
 import { Vec4 } from "./modules/matMath.mjs";
-import { Cube, Sphere } from "./modules/object.mjs";
+import { Cube } from "./modules/object.mjs";
 
 const sWidth = 200;
 const sHeight = 150;

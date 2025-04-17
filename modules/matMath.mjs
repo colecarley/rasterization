@@ -282,12 +282,6 @@ export class Mat4 {
     T() {
         return new Mat4(this.matrix[0].map((_, colIndex) => this.matrix.map(row => row[colIndex])));
     }
-
-    scale(scalar) {
-        const result = new Mat4(this.matrix.map(row => row.map(x => x * scalar)))
-        console.log(result);
-        return result;
-    }
 };
 
 
