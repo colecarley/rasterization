@@ -12,7 +12,6 @@ function toRaster(v) {
     return new Vec4([(sWidth * (v.x + v.w) / 2), (sHeight * (v.w - v.y) / 2), v.z, v.w]);
 }
 
-const canvas = document.createElement("canvas");
 
 function raster(mat, frameBuffer, depthBuffer) {
     const inv = mat.invert();
@@ -36,7 +35,6 @@ function raster(mat, frameBuffer, depthBuffer) {
 
                 if (test >= depthBuffer[j + i * sWidth]) {
                     depthBuffer[j + i * sWidth] = test;
-
                     frameBuffer[j + i * sWidth] = new Vec3([Math.floor(alpha * 0xff), Math.floor(beta * 0xff), Math.floor(gamma * 0xff)]);
                 }
             }
@@ -66,15 +64,23 @@ function outputFrame(frameBuffer, container) {
     container.append(canvas);
 }
 
-function renderTriangle(container, mat) {
-    const frameBuffer = new Array(sHeight * sWidth);
-    frameBuffer.map((v) => new Vec3([0, 0, 0]));
-    raster(mat, frameBuffer);
-    outputFrame(frameBuffer, container);
-}
+let view = Mat4.lookAt(new Vec3([0, 3.75, 6.5]), new Vec3([0, 0, 0]), new Vec3([0, 1, 0]));
+let proj = Mat4.perspective(60, sWidth / sHeight, 0.1, 100);
+const container = document.getElementById("canvas-container");
+const canvas = document.createElement("canvas");
+document.onkeydown = (e) => {
+    if (e.key == "ArrowRight") {
+        view = view.rotate(5, new Vec3([0, 1, 0]));
+    } else if (e.key == "ArrowLeft") {
+        view = view.rotate(-5, new Vec3([0, 1, 0]));
+    } else if (e.key == "ArrowUp") {
+        view = view.rotate(5, new Vec3([1, 0, 0]));
+    } else if (e.key == "ArrowDown") {
+        view = view.rotate(-5, new Vec3([1, 0, 0]));
+    }
+};
 
 function main() {
-    const container = document.getElementById("canvas-container");
 
     const eye4 = new Mat4([
         [1, 0, 0, 0],
@@ -83,7 +89,7 @@ function main() {
         [0, 0, 0, 1]
     ]);
 
-    const objects = [];
+    let objects = [];
     let model0 = eye4.translate(new Vec3([0, 0, 2]));
     model0 = model0.rotate(45, new Vec3([0, 1, 0]))
     objects.push(model0);
@@ -96,45 +102,44 @@ function main() {
 
     let model3 = eye4.translate(new Vec3([0, 0, -2]));
     objects.push(model3.rotate(90, new Vec3([0, 0, 1])));
-
-    let view = Mat4.lookAt(new Vec3([0, 3.75, 6.5]), new Vec3([0, 0, 0]), new Vec3([0, 1, 0]));
-    let proj = Mat4.perspective(60, sWidth / sHeight, 0.1, 100);
-
     const cube = new Cube();
 
-    const frameBuffer = new Array(sHeight * sWidth);
-    frameBuffer.map((v) => new Vec3([0, 0, 0]));
-    const depthBuffer = new Array(sHeight * sWidth).fill(0);
+    setInterval(() => {
+        const frameBuffer = new Array(sHeight * sWidth);
+        frameBuffer.map((v) => new Vec3([0, 0, 0]));
+        const depthBuffer = new Array(sHeight * sWidth).fill(0);
 
-    for (const obj of objects) {
-        for (let i = 0; i < Math.floor(cube.indices.length / 3); i++) {
-            const v0 = cube.vertices[cube.indices[i * 3]];
-            const v1 = cube.vertices[cube.indices[i * 3 + 1]];
-            const v2 = cube.vertices[cube.indices[i * 3 + 2]];
+        for (const obj of objects) {
+            for (let i = 0; i < Math.floor(cube.indices.length / 3); i++) {
+                const v0 = cube.vertices[cube.indices[i * 3]];
+                const v1 = cube.vertices[cube.indices[i * 3 + 1]];
+                const v2 = cube.vertices[cube.indices[i * 3 + 2]];
 
 
-            const v0clip = proj.crossVec(view.crossVec(obj.crossVec(Vec4.from_vec3(v0, 1))));
-            const v1clip = proj.crossVec(view.crossVec(obj.crossVec(Vec4.from_vec3(v1, 1))));
-            const v2clip = proj.crossVec(view.crossVec(obj.crossVec(Vec4.from_vec3(v2, 1))));
+                const v0clip = proj.crossVec(view.crossVec(obj.crossVec(Vec4.from_vec3(v0, 1))));
+                const v1clip = proj.crossVec(view.crossVec(obj.crossVec(Vec4.from_vec3(v1, 1))));
+                const v2clip = proj.crossVec(view.crossVec(obj.crossVec(Vec4.from_vec3(v2, 1))));
 
-            const v0Homo = toRaster(v0clip);
-            const v1Homo = toRaster(v1clip);
-            const v2Homo = toRaster(v2clip);
+                const v0Homo = toRaster(v0clip);
+                const v1Homo = toRaster(v1clip);
+                const v2Homo = toRaster(v2clip);
 
-            const M = new Mat3([
-                [v0Homo.x, v1Homo.x, v2Homo.x],
-                [v0Homo.y, v1Homo.y, v2Homo.y],
-                [v0Homo.w, v1Homo.w, v2Homo.w]
-            ]);
+                const M = new Mat3([
+                    [v0Homo.x, v1Homo.x, v2Homo.x],
+                    [v0Homo.y, v1Homo.y, v2Homo.y],
+                    [v0Homo.w, v1Homo.w, v2Homo.w]
+                ]);
 
-            const det = M.determinant();
-            if (det >= 0) continue;
+                const det = M.determinant();
+                if (det >= 0) continue;
 
-            raster(M, frameBuffer, depthBuffer);
+                raster(M, frameBuffer, depthBuffer);
+            }
         }
-    }
 
-    outputFrame(frameBuffer, container);
+        outputFrame(frameBuffer, container);
+        objects = objects.map(obj => obj.rotate(5, new Vec3([1, 0, 0])));
+    }, 10);
 }
 
 
