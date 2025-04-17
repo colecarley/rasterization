@@ -1,36 +1,35 @@
 import { Mat3 } from "./modules/matMath.mjs";
+import { Mat4 } from "./modules/matMath.mjs";
 import { Vec3 } from "./modules/matMath.mjs";
+import { Vec4 } from "./modules/matMath.mjs";
+import { Cube } from "./modules/object.mjs";
 
 const sWidth = 400;
 const sHeight = 300;
 
 // Transform a given vertex in clip-space [-w,w] to raster-space [0, {w|h}]
 function toRaster(v) {
-    return new Vec3((sWidth * (v.x + 1.0) / 2), (sHeight * (v.y + 1) / 2), 1.0);
+    return new Vec4([(sWidth * (v.x + v.w) / 2), (sHeight * (v.w - v.y) / 2), v.z, v.w]);
 }
-
-let triangle = [new Vec3(-0.5, 0.5, 1), new Vec3(0.5, 0.5, 1), new Vec3(0, -0.5, 1)];
-triangle = triangle.map((v) => toRaster(v))
 
 const canvas = document.createElement("canvas");
 
-
-function render(mat, frameBuffer) {
+function raster(mat, frameBuffer) {
     const inv = mat.invert();
-    const e0 = new Vec3(...(inv.crossVec(new Vec3(1, 0, 0)).matrix.map(x => x[0])));
-    const e1 = new Vec3(...(inv.crossVec(new Vec3(0, 1, 0)).matrix.map(x => x[1])));
-    const e2 = new Vec3(...(inv.crossVec(new Vec3(0, 0, 1)).matrix.map(x => x[2])));
+    const e0 = inv.crossVec(new Vec3([1, 0, 0]));
+    const e1 = inv.crossVec(new Vec3([0, 1, 0]));
+    const e2 = inv.crossVec(new Vec3([0, 0, 1]));
 
     for (let i = 0; i < sHeight; i++) {
         for (let j = 0; j < sWidth; j++) {
-            let sample = new Vec3(j + 0.5, i + 0.5, 1.0);
+            let sample = new Vec3([j + 0.5, i + 0.5, 1.0]);
 
             let alpha = e0.dot(sample);
             let beta = e1.dot(sample);
             let gamma = e2.dot(sample);
 
             if ((alpha >= 0.0) && (beta >= 0.0) && (gamma >= 0.0)) {
-                frameBuffer[j + i * sWidth] = new Vec3(Math.floor(alpha * 0xff), Math.floor(beta * 0xff), Math.floor(gamma * 0xff));
+                frameBuffer[j + i * sWidth] = new Vec3([Math.floor(alpha * 0xff), Math.floor(beta * 0xff), Math.floor(gamma * 0xff)]);
             }
         }
     }
@@ -58,15 +57,75 @@ function outputFrame(frameBuffer, container) {
     container.append(canvas);
 }
 
-function render_triangle(container, mat) {
+function renderTriangle(container, mat) {
     const frameBuffer = new Array(sHeight * sWidth);
-    frameBuffer.map((v) => new Vec3(0, 0, 0));
-    render(mat, frameBuffer);
+    frameBuffer.map((v) => new Vec3([0, 0, 0]));
+    raster(mat, frameBuffer);
     outputFrame(frameBuffer, container);
 }
 
-let mat = new Mat3([triangle.map(v => v.x), triangle.map(v => v.y), triangle.map(v => v.z)]);
-window.onload = () => {
+function main() {
     const container = document.getElementById("canvas-container");
-    render_triangle(container, mat);
-};
+
+    const eye4 = new Mat4([
+        [1, 0, 0, 0],
+        [0, 1, 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1]
+    ]);
+
+    const objects = [];
+    let model0 = eye4.translate(new Vec3([0, 0, 2]));
+    model0 = model0.rotate(45, new Vec3([0, 1, 0]))
+    objects.push(model0);
+
+    let model1 = eye4.translate(new Vec3([-3.75, 0, 0]));
+    objects.push(model1.rotate(30, new Vec3([1, 0, 0])));
+
+    let model2 = eye4.translate(new Vec3([3.75, 0, 0]));
+    objects.push(model2.rotate(60, new Vec3([0, 1, 0])));
+
+    let model3 = eye4.translate(new Vec3([0, 0, -2]));
+    objects.push(model3.rotate(90, new Vec3([0, 0, 1])));
+
+    let view = Mat4.lookAt(new Vec3([0, 3.75, 6.5]), new Vec3([0, 0, 0]), new Vec3([0, 1, 0]));
+    let proj = Mat4.perspective(60, sWidth / sHeight, 0.1, 100);
+
+    const cube = new Cube();
+
+    const frameBuffer = new Array(sHeight * sWidth);
+    frameBuffer.map((v) => new Vec3([0, 0, 0]));
+
+    for (const obj of objects) {
+        for (let i = 0; i < Math.floor(cube.indices.length / 3); i++) {
+            const v0 = cube.vertices[cube.indices[i * 3]];
+            const v1 = cube.vertices[cube.indices[i * 3 + 1]];
+            const v2 = cube.vertices[cube.indices[i * 3 + 2]];
+
+
+            const v0clip = proj.crossVec(view.crossVec(obj.crossVec(Vec4.from_vec3(v0, 1))));
+            const v1clip = proj.crossVec(view.crossVec(obj.crossVec(Vec4.from_vec3(v1, 1))));
+            const v2clip = proj.crossVec(view.crossVec(obj.crossVec(Vec4.from_vec3(v2, 1))));
+
+            const v0Homo = toRaster(v0clip);
+            const v1Homo = toRaster(v1clip);
+            const v2Homo = toRaster(v2clip);
+
+            const M = new Mat3([
+                [v0Homo.x, v1Homo.x, v2Homo.x],
+                [v0Homo.y, v1Homo.y, v2Homo.y],
+                [v0Homo.w, v1Homo.w, v2Homo.w]
+            ]);
+
+            const det = M.determinant();
+            if (det >= 0) continue;
+
+            raster(M, frameBuffer);
+        }
+    }
+
+    outputFrame(frameBuffer, container);
+}
+
+
+window.onload = main;
