@@ -117,7 +117,7 @@ export class Mat3 {
     }
 
 
-    crossVec(v) {
+    mulVec(v) {
         const result = [0, 0, 0];
 
         for (let i = 0; i < 3; i++) {
@@ -129,7 +129,7 @@ export class Mat3 {
         return new Vec3(result);
     }
 
-    cross(m2) {
+    mul(m2) {
         const result = [
             [0, 0, 0],
             [0, 0, 0],
@@ -202,7 +202,7 @@ export class Mat4 {
         return new Mat4(result);
     }
 
-    crossVec(v) {
+    mulVec(v) {
         const result = [0, 0, 0, 0];
 
         for (let i = 0; i < 4; i++) {
@@ -214,7 +214,7 @@ export class Mat4 {
         return new Vec4(result);
     }
 
-    cross(m2) {
+    mul(m2) {
         const result = [
             [0, 0, 0, 0],
             [0, 0, 0, 0],
@@ -240,7 +240,7 @@ export class Mat4 {
             [0, 0, 1, v.z],
             [0, 0, 0, 1]]);
 
-        return this.cross(transMat.T());
+        return this.mul(transMat.T());
     }
 
     rotate(angle, vaxis) {
@@ -276,7 +276,7 @@ export class Mat4 {
             result.matrix[1][1] = cos;
         }
 
-        return result.cross(this);
+        return result.mul(this);
     }
 
     T() {

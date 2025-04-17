@@ -2,19 +2,19 @@ import { Mat3 } from "./modules/matMath.mjs";
 import { Mat4 } from "./modules/matMath.mjs";
 import { Vec3 } from "./modules/matMath.mjs";
 import { Vec4 } from "./modules/matMath.mjs";
-import { Cube } from "./modules/object.mjs";
+import { Cube, Sphere } from "./modules/object.mjs";
 
-const sWidth = 400;
-const sHeight = 300;
+const sWidth = 200;
+const sHeight = 150;
 
 function toRaster(v) {
     return new Vec4([(sWidth * (v.x + v.w) / 2), (sHeight * (v.w - v.y) / 2), v.z, v.w]);
 }
 
 function raster(v0, v1, v2, obj, hex, frameBuffer, depthBuffer) {
-    const v0clip = proj.crossVec(view.crossVec(obj.crossVec(Vec4.from_vec3(v0, 1))));
-    const v1clip = proj.crossVec(view.crossVec(obj.crossVec(Vec4.from_vec3(v1, 1))));
-    const v2clip = proj.crossVec(view.crossVec(obj.crossVec(Vec4.from_vec3(v2, 1))));
+    const v0clip = proj.mulVec(view.mulVec(obj.mulVec(Vec4.from_vec3(v0, 1))));
+    const v1clip = proj.mulVec(view.mulVec(obj.mulVec(Vec4.from_vec3(v1, 1))));
+    const v2clip = proj.mulVec(view.mulVec(obj.mulVec(Vec4.from_vec3(v2, 1))));
 
     const v0Homo = toRaster(v0clip);
     const v1Homo = toRaster(v1clip);
@@ -30,11 +30,11 @@ function raster(v0, v1, v2, obj, hex, frameBuffer, depthBuffer) {
     if (det >= 0) return;
 
     const inv = M.invert();
-    const e0 = inv.crossVec(new Vec3([1, 0, 0]));
-    const e1 = inv.crossVec(new Vec3([0, 1, 0]));
-    const e2 = inv.crossVec(new Vec3([0, 0, 1]));
+    const e0 = inv.mulVec(new Vec3([1, 0, 0]));
+    const e1 = inv.mulVec(new Vec3([0, 1, 0]));
+    const e2 = inv.mulVec(new Vec3([0, 0, 1]));
 
-    const c = inv.crossVec(new Vec3([1, 1, 1]));
+    const c = inv.mulVec(new Vec3([1, 1, 1]));
 
     for (let i = 0; i < sHeight; i++) {
         for (let j = 0; j < sWidth; j++) {
@@ -131,10 +131,11 @@ function main() {
         }
 
         for (const obj of objects) {
-            for (let i = 0; i < Math.floor(cube.indices.length / 3); i++) {
+            for (let i = 0; i < cube.indices.length / 3; i++) {
                 const v0 = cube.vertices[cube.indices[i * 3]];
                 const v1 = cube.vertices[cube.indices[i * 3 + 1]];
                 const v2 = cube.vertices[cube.indices[i * 3 + 2]];
+
                 const color = cube.colors[cube.indices[i * 3] % 6];
                 const hex = color.x * 0xff | color.y * 0xff << 8 | color.z * 0xff << 16 | 0xff << 24;
                 raster(v0, v1, v2, obj, hex, frameBuffer, depthBuffer);
