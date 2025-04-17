@@ -7,12 +7,11 @@ import { Cube } from "./modules/object.mjs";
 const sWidth = 400;
 const sHeight = 300;
 
-// Transform a given vertex in clip-space [-w,w] to raster-space [0, {w|h}]
 function toRaster(v) {
     return new Vec4([(sWidth * (v.x + v.w) / 2), (sHeight * (v.w - v.y) / 2), v.z, v.w]);
 }
 
-function raster(v0, v1, v2, obj, color, frameBuffer, depthBuffer) {
+function raster(v0, v1, v2, obj, hex, frameBuffer, depthBuffer) {
     const v0clip = proj.crossVec(view.crossVec(obj.crossVec(Vec4.from_vec3(v0, 1))));
     const v1clip = proj.crossVec(view.crossVec(obj.crossVec(Vec4.from_vec3(v1, 1))));
     const v2clip = proj.crossVec(view.crossVec(obj.crossVec(Vec4.from_vec3(v2, 1))));
@@ -50,7 +49,7 @@ function raster(v0, v1, v2, obj, color, frameBuffer, depthBuffer) {
 
                 if (test >= depthBuffer[j + i * sWidth]) {
                     depthBuffer[j + i * sWidth] = test;
-                    frameBuffer[j + i * sWidth] = color;
+                    frameBuffer[j + i * sWidth] = hex;
                 }
             }
         }
@@ -58,22 +57,16 @@ function raster(v0, v1, v2, obj, color, frameBuffer, depthBuffer) {
 }
 
 function outputFrame(frameBuffer, container) {
-    canvas.width = sWidth;
-    canvas.height = sHeight;
-    const ctx = canvas.getContext('2d');
     var data = ctx.createImageData(canvas.width, canvas.height);
     var buf = new Uint32Array(data.data.buffer);
-
     for (let i = 0; i < frameBuffer.length; i++) {
         if (frameBuffer[i]) {
-            buf[i] = frameBuffer[i].x * 0xff;
-            buf[i] |= (frameBuffer[i].y * 0xff) << 8;
-            buf[i] |= (frameBuffer[i].z * 0xff) << 16;
-            buf[i] |= 0xff << 24;
+            buf[i] = frameBuffer[i];
         } else {
             buf[i] = 0xff000000;
         }
     }
+
     ctx.putImageData(data, 0, 0); // x and y are the coordinates
     container.append(canvas);
 }
@@ -82,6 +75,12 @@ let view = Mat4.lookAt(new Vec3([0, 3.75, 6.5]), new Vec3([0, 0, 0]), new Vec3([
 let proj = Mat4.perspective(60, sWidth / sHeight, 0.1, 100);
 const container = document.getElementById("canvas-container");
 const canvas = document.createElement("canvas");
+canvas.width = sWidth;
+canvas.height = sHeight;
+const ctx = canvas.getContext('2d');
+
+const fps = document.getElementById("fps");
+
 document.onkeydown = (e) => {
     if (e.key == "ArrowRight") {
         view = view.rotate(5, new Vec3([0, 1, 0]));
@@ -117,10 +116,19 @@ function main() {
     objects.push(model3.rotate(90, new Vec3([0, 0, 1])));
     const cube = new Cube();
 
+    let frameBuffer = new Array(sHeight * sWidth);
+    let depthBuffer = new Array(sHeight * sWidth);
+    let count = 0;
+    let now = Math.floor(Date.now() / 1000);
     setInterval(() => {
-        const frameBuffer = new Array(sHeight * sWidth);
-        frameBuffer.map((_) => new Vec3([0, 0, 0]));
-        const depthBuffer = new Array(sHeight * sWidth).fill(0);
+        frameBuffer = frameBuffer.fill(0);
+        depthBuffer = depthBuffer.fill(0);
+        count++;
+        if (now != Math.floor(Date.now() / 1000)) {
+            fps.innerHTML = count;
+            now = Math.floor(Date.now() / 1000);
+            count = 0;
+        }
 
         for (const obj of objects) {
             for (let i = 0; i < Math.floor(cube.indices.length / 3); i++) {
@@ -128,13 +136,14 @@ function main() {
                 const v1 = cube.vertices[cube.indices[i * 3 + 1]];
                 const v2 = cube.vertices[cube.indices[i * 3 + 2]];
                 const color = cube.colors[cube.indices[i * 3] % 6];
-                raster(v0, v1, v2, obj, color, frameBuffer, depthBuffer);
+                const hex = color.x * 0xff | color.y * 0xff << 8 | color.z * 0xff << 16 | 0xff << 24;
+                raster(v0, v1, v2, obj, hex, frameBuffer, depthBuffer);
             }
         }
 
         outputFrame(frameBuffer, container);
         objects = objects.map(obj => obj.rotate(1, new Vec3([1, 0, 0])));
-    }, 10);
+    }, 0);
 }
 
 

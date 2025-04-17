@@ -7,24 +7,12 @@ export class Vec3 {
         return this.vec[0];
     }
 
-    set x(val) {
-        this.vec[0] = val;
-    }
-
     get y() {
         return this.vec[1];
     }
 
-    set y(val) {
-        this.vec[1] = val;
-    }
-
     get z() {
         return this.vec[2];
-    }
-
-    set z(val) {
-        this.vec[2] = val;
     }
 
     dot(v2) {
@@ -58,32 +46,16 @@ export class Vec4 {
         return this.vec[0];
     }
 
-    set x(val) {
-        this.vec[0] = val;
-    }
-
     get y() {
         return this.vec[1];
-    }
-
-    set y(val) {
-        this.vec[1] = val;
     }
 
     get z() {
         return this.vec[2];
     }
 
-    set z(val) {
-        this.vec[2] = val;
-    }
-
     get w() {
         return this.vec[3];
-    }
-
-    set w(val) {
-        this.vec[3] = val;
     }
 
     static from_vec3(vec3, w) {
@@ -97,10 +69,11 @@ export class Mat3 {
     }
 
     adjugate() {
-        const adj = [];
-        adj.push(new Array(3));
-        adj.push(new Array(3));
-        adj.push(new Array(3));
+        const adj = [
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0]
+        ];
 
         adj[0][0] = (this.matrix[1][1] * this.matrix[2][2] - this.matrix[1][2] * this.matrix[2][1]);
         adj[0][1] = -(this.matrix[0][1] * this.matrix[2][2] - this.matrix[0][2] * this.matrix[2][1]);
@@ -128,11 +101,11 @@ export class Mat3 {
         }
 
         const adj = this.adjugate();
-
-        const inverse = [];
-        inverse.push(new Array(3).fill(0));
-        inverse.push(new Array(3).fill(0));
-        inverse.push(new Array(3).fill(0));
+        const inverse = [
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0]
+        ];
 
         for (let i = 0; i < 3; i++) {
             for (let j = 0; j < 3; j++) {
@@ -145,14 +118,11 @@ export class Mat3 {
 
 
     crossVec(v) {
-        const mat = this.matrix;
-        const vec = v.vec;
-
-        const result = new Array(3).fill(0);
+        const result = [0, 0, 0];
 
         for (let i = 0; i < 3; i++) {
             for (let j = 0; j < 3; j++) {
-                result[i] += mat[j][i] * vec[j];
+                result[i] += this.matrix[j][i] * v.vec[j];
             }
         }
 
@@ -160,18 +130,16 @@ export class Mat3 {
     }
 
     cross(m2) {
-        const mat1 = this.matrix;
-        const mat2 = m2.matrix;
-
-        const result = [];
-        result.push(new Array(3).fill(0));
-        result.push(new Array(3).fill(0));
-        result.push(new Array(3).fill(0));
+        const result = [
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0]
+        ];
 
         for (let i = 0; i < 3; i++) {
             for (let j = 0; j < 3; j++) {
                 for (let k = 0; k < 3; k++) {
-                    result[i][j] += mat1[i][k] * mat2[k][j];
+                    result[i][j] += this.matrix[i][k] * m2.matrix[k][j];
                 }
             }
         }
@@ -187,11 +155,12 @@ export class Mat4 {
     }
 
     static lookAt(eye, center, up) {
-        const result = [];
-        result.push(new Array(4).fill(0));
-        result.push(new Array(4).fill(0));
-        result.push(new Array(4).fill(0));
-        result.push(new Array(4).fill(0));
+        const result = [
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0]
+        ];
 
         const f = (center.minus(eye)).normalize();
         let u = up.normalize();
@@ -215,12 +184,12 @@ export class Mat4 {
     }
 
     static perspective(fovy, aspect, near, far) {
-        const result = [];
-        result.push(new Array(4).fill(0));
-        result.push(new Array(4).fill(0));
-        result.push(new Array(4).fill(0));
-        result.push(new Array(4).fill(0));
-
+        const result = [
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0]
+        ];
         const angleRad = (fovy * Math.PI) / 180;
 
         const tanHalfFovy = Math.tan(angleRad / 2);
@@ -234,14 +203,11 @@ export class Mat4 {
     }
 
     crossVec(v) {
-        const mat = this.matrix;
-        const vec = v.vec;
-
-        const result = new Array(4).fill(0);
+        const result = [0, 0, 0, 0];
 
         for (let i = 0; i < 4; i++) {
             for (let j = 0; j < 4; j++) {
-                result[i] += mat[j][i] * vec[j];
+                result[i] += this.matrix[j][i] * v.vec[j];
             }
         }
 
@@ -249,19 +215,17 @@ export class Mat4 {
     }
 
     cross(m2) {
-        const mat1 = this.matrix;
-        const mat2 = m2.matrix;
-
-        const result = [];
-        result.push(new Array(4).fill(0));
-        result.push(new Array(4).fill(0));
-        result.push(new Array(4).fill(0));
-        result.push(new Array(4).fill(0));
+        const result = [
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0]
+        ];
 
         for (let i = 0; i < 4; i++) {
             for (let j = 0; j < 4; j++) {
                 for (let k = 0; k < 4; k++) {
-                    result[i][j] += mat1[i][k] * mat2[k][j];
+                    result[i][j] += this.matrix[i][k] * m2.matrix[k][j];
                 }
             }
         }
@@ -275,6 +239,7 @@ export class Mat4 {
             [0, 1, 0, v.y],
             [0, 0, 1, v.z],
             [0, 0, 0, 1]]);
+
         return this.cross(transMat.T());
     }
 
@@ -316,6 +281,12 @@ export class Mat4 {
 
     T() {
         return new Mat4(this.matrix[0].map((_, colIndex) => this.matrix.map(row => row[colIndex])));
+    }
+
+    scale(scalar) {
+        const result = new Mat4(this.matrix.map(row => row.map(x => x * scalar)))
+        console.log(result);
+        return result;
     }
 };
 
