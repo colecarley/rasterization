@@ -12,9 +12,25 @@ function toRaster(v) {
     return new Vec4([(sWidth * (v.x + v.w) / 2), (sHeight * (v.w - v.y) / 2), v.z, v.w]);
 }
 
+function raster(v0, v1, v2, obj, color, frameBuffer, depthBuffer) {
+    const v0clip = proj.crossVec(view.crossVec(obj.crossVec(Vec4.from_vec3(v0, 1))));
+    const v1clip = proj.crossVec(view.crossVec(obj.crossVec(Vec4.from_vec3(v1, 1))));
+    const v2clip = proj.crossVec(view.crossVec(obj.crossVec(Vec4.from_vec3(v2, 1))));
 
-function raster(mat, frameBuffer, depthBuffer) {
-    const inv = mat.invert();
+    const v0Homo = toRaster(v0clip);
+    const v1Homo = toRaster(v1clip);
+    const v2Homo = toRaster(v2clip);
+
+    const M = new Mat3([
+        [v0Homo.x, v1Homo.x, v2Homo.x],
+        [v0Homo.y, v1Homo.y, v2Homo.y],
+        [v0Homo.w, v1Homo.w, v2Homo.w]
+    ]);
+
+    const det = M.determinant();
+    if (det >= 0) return;
+
+    const inv = M.invert();
     const e0 = inv.crossVec(new Vec3([1, 0, 0]));
     const e1 = inv.crossVec(new Vec3([0, 1, 0]));
     const e2 = inv.crossVec(new Vec3([0, 0, 1]));
@@ -29,18 +45,16 @@ function raster(mat, frameBuffer, depthBuffer) {
             let beta = e1.dot(sample);
             let gamma = e2.dot(sample);
 
-
             if ((alpha >= 0.0) && (beta >= 0.0) && (gamma >= 0.0)) {
                 const test = (c.x * sample.x) + (c.y * sample.y) + c.z;
 
                 if (test >= depthBuffer[j + i * sWidth]) {
                     depthBuffer[j + i * sWidth] = test;
-                    frameBuffer[j + i * sWidth] = new Vec3([Math.floor(alpha * 0xff), Math.floor(beta * 0xff), Math.floor(gamma * 0xff)]);
+                    frameBuffer[j + i * sWidth] = color;
                 }
             }
         }
     }
-
 }
 
 function outputFrame(frameBuffer, container) {
@@ -52,12 +66,12 @@ function outputFrame(frameBuffer, container) {
 
     for (let i = 0; i < frameBuffer.length; i++) {
         if (frameBuffer[i]) {
-            buf[i] = frameBuffer[i].x;
-            buf[i] |= frameBuffer[i].y << 8;
-            buf[i] |= frameBuffer[i].z << 16;
+            buf[i] = frameBuffer[i].x * 0xff;
+            buf[i] |= (frameBuffer[i].y * 0xff) << 8;
+            buf[i] |= (frameBuffer[i].z * 0xff) << 16;
             buf[i] |= 0xff << 24;
         } else {
-            buf[i] = 0x00000000;
+            buf[i] = 0xff000000;
         }
     }
     ctx.putImageData(data, 0, 0); // x and y are the coordinates
@@ -81,7 +95,6 @@ document.onkeydown = (e) => {
 };
 
 function main() {
-
     const eye4 = new Mat4([
         [1, 0, 0, 0],
         [0, 1, 0, 0],
@@ -106,7 +119,7 @@ function main() {
 
     setInterval(() => {
         const frameBuffer = new Array(sHeight * sWidth);
-        frameBuffer.map((v) => new Vec3([0, 0, 0]));
+        frameBuffer.map((_) => new Vec3([0, 0, 0]));
         const depthBuffer = new Array(sHeight * sWidth).fill(0);
 
         for (const obj of objects) {
@@ -114,31 +127,13 @@ function main() {
                 const v0 = cube.vertices[cube.indices[i * 3]];
                 const v1 = cube.vertices[cube.indices[i * 3 + 1]];
                 const v2 = cube.vertices[cube.indices[i * 3 + 2]];
-
-
-                const v0clip = proj.crossVec(view.crossVec(obj.crossVec(Vec4.from_vec3(v0, 1))));
-                const v1clip = proj.crossVec(view.crossVec(obj.crossVec(Vec4.from_vec3(v1, 1))));
-                const v2clip = proj.crossVec(view.crossVec(obj.crossVec(Vec4.from_vec3(v2, 1))));
-
-                const v0Homo = toRaster(v0clip);
-                const v1Homo = toRaster(v1clip);
-                const v2Homo = toRaster(v2clip);
-
-                const M = new Mat3([
-                    [v0Homo.x, v1Homo.x, v2Homo.x],
-                    [v0Homo.y, v1Homo.y, v2Homo.y],
-                    [v0Homo.w, v1Homo.w, v2Homo.w]
-                ]);
-
-                const det = M.determinant();
-                if (det >= 0) continue;
-
-                raster(M, frameBuffer, depthBuffer);
+                const color = cube.colors[cube.indices[i * 3] % 6];
+                raster(v0, v1, v2, obj, color, frameBuffer, depthBuffer);
             }
         }
 
         outputFrame(frameBuffer, container);
-        objects = objects.map(obj => obj.rotate(5, new Vec3([1, 0, 0])));
+        objects = objects.map(obj => obj.rotate(1, new Vec3([1, 0, 0])));
     }, 10);
 }
 
