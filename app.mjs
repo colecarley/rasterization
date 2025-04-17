@@ -14,11 +14,13 @@ function toRaster(v) {
 
 const canvas = document.createElement("canvas");
 
-function raster(mat, frameBuffer) {
+function raster(mat, frameBuffer, depthBuffer) {
     const inv = mat.invert();
     const e0 = inv.crossVec(new Vec3([1, 0, 0]));
     const e1 = inv.crossVec(new Vec3([0, 1, 0]));
     const e2 = inv.crossVec(new Vec3([0, 0, 1]));
+
+    const c = inv.crossVec(new Vec3([1, 1, 1]));
 
     for (let i = 0; i < sHeight; i++) {
         for (let j = 0; j < sWidth; j++) {
@@ -28,8 +30,15 @@ function raster(mat, frameBuffer) {
             let beta = e1.dot(sample);
             let gamma = e2.dot(sample);
 
+
             if ((alpha >= 0.0) && (beta >= 0.0) && (gamma >= 0.0)) {
-                frameBuffer[j + i * sWidth] = new Vec3([Math.floor(alpha * 0xff), Math.floor(beta * 0xff), Math.floor(gamma * 0xff)]);
+                const test = (c.x * sample.x) + (c.y * sample.y) + c.z;
+
+                if (test >= depthBuffer[j + i * sWidth]) {
+                    depthBuffer[j + i * sWidth] = test;
+
+                    frameBuffer[j + i * sWidth] = new Vec3([Math.floor(alpha * 0xff), Math.floor(beta * 0xff), Math.floor(gamma * 0xff)]);
+                }
             }
         }
     }
@@ -95,6 +104,7 @@ function main() {
 
     const frameBuffer = new Array(sHeight * sWidth);
     frameBuffer.map((v) => new Vec3([0, 0, 0]));
+    const depthBuffer = new Array(sHeight * sWidth).fill(0);
 
     for (const obj of objects) {
         for (let i = 0; i < Math.floor(cube.indices.length / 3); i++) {
@@ -120,7 +130,7 @@ function main() {
             const det = M.determinant();
             if (det >= 0) continue;
 
-            raster(M, frameBuffer);
+            raster(M, frameBuffer, depthBuffer);
         }
     }
 
